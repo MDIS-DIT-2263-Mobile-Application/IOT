@@ -12,16 +12,16 @@ void setup() {
   
   Serial.begin(115200);
   Serial.println("Hello, ESP32!");
-  pinMode(18, OUTPUT);
+  pinMode(13, OUTPUT);
 }
 
 // the loop function runs over and over again forever
 void loop() {
-  digitalWrite(18, HIGH); // turn the LED on
+  digitalWrite(13, HIGH); // turn the LED on
   
   Serial.println("HIGH, ESP32!");
   delay(500);             // wait for 500 milliseconds
-  digitalWrite(18, LOW);  // turn the LED off
+  digitalWrite(13, LOW);  // turn the LED off
   
   Serial.println("LOW, ESP32!");
   delay(500);     
