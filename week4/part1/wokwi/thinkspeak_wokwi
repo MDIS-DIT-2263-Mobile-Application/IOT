@@ -9,7 +9,7 @@ DHT dht(DHTPIN, DHTTYPE);
 
 #define ssid "Wokwi-GUEST"
 #define password ""
-#define APIKEY "D2J281BE7NC7IWNC"
+#define APIKEY "YOUR_OWN_API_KEY"
 #define SERVER "http://api.thingspeak.com/update"
 
 void setup() {
