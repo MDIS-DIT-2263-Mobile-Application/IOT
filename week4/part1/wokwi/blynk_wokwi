@@ -1,0 +1,56 @@
+#include "DHT.h"
+#include "WiFi.h";
+#include <HTTPClient.h>
+#include <BlynkSimpleEsp32_Async_WFM.h>
+
+#define DHTPIN 18     
+#define DHTTYPE DHT22   // DHT 22  (AM2302), AM2321
+
+DHT dht(DHTPIN, DHTTYPE);
+
+#define ssid "Wokwi-GUEST"
+#define password ""
+
+#define BLYNK_TEMPLATE_ID "Your own"
+#define BLYNK_TEMPLATE_NAME "ESP32 DHT22 Wokwi"
+#define BLYNK_AUTH_TOKEN "Your own"
+
+
+BlynkTimer timer;
+
+
+void sendTemp() {
+  
+  float temperature = dht.readTemperature();
+  float humidity = dht.readHumidity();
+  if (!isnan(temperature)) {
+    Blynk.virtualWrite(V0, temperaturet);       // Push to widget on V0
+    Blynk.virtualWrite(V1, humidity);       // Push to widget on V1
+    Serial.println("Blynk: " + String(temperaturet));
+  }
+}
+
+
+void setup() {
+  Serial.begin(115200);
+  Serial.println(F("DHT22 example!"));
+
+  dht.begin();
+
+  WiFi.begin(ssid, password);
+  Serial.print("Connecting to Wi-Fi");
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.println("\nConnected to internet!");
+
+  
+  Blynk.begin(auth, ssid, pass);      // Connects WiFi + Blynk
+  timer.setInterval(2000L, sendTemp); // Every 2 seconds
+}
+
+void loop() {
+  Blynk.run();
+  timer.run();
+}
