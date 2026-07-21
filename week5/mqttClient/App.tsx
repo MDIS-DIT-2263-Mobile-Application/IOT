@@ -12,7 +12,7 @@ import mqtt from "mqtt";
 // Change these
 // =========================
 
-const MQTT_SERVER = `wss://${process.env.EXPO_PUBLIC_MQTT_SERVER}:${process.env.EXPO_PUBLIC_MQTT_PORT || 8883}/mqtt`;
+const MQTT_SERVER = `wss://${process.env.EXPO_PUBLIC_MQTT_SERVER}:${process.env.EXPO_PUBLIC_MQTT_PORT || 8884}/mqtt`;
 console.log(MQTT_SERVER);
 
 const options = {

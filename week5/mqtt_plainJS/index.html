@@ -1,0 +1,449 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<title>MQTT LED Control (No Build)</title>
+	<style>
+		:root {
+			--bg: #f3f5f7;
+			--card: #ffffff;
+			--ink: #1b2330;
+			--muted: #5b6472;
+			--line: #d9e0e8;
+			--ok: #1a9c57;
+			--bad: #c63939;
+			--accent: #1f6feb;
+		}
+
+		* {
+			box-sizing: border-box;
+		}
+
+		body {
+			margin: 0;
+			font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+			background: radial-gradient(circle at 0% 0%, #ffffff, var(--bg));
+			color: var(--ink);
+		}
+
+		.layout {
+			min-height: 100vh;
+			display: grid;
+			grid-template-columns: 320px 1fr;
+		}
+
+		.sidebar {
+			border-right: 1px solid var(--line);
+			background: #f9fbfd;
+			padding: 16px;
+		}
+
+		.sidebar h2 {
+			margin: 0 0 8px;
+			font-size: 20px;
+		}
+
+		.sidebar p {
+			margin: 0 0 14px;
+			color: var(--muted);
+			font-size: 13px;
+			line-height: 1.4;
+		}
+
+		.field {
+			margin-bottom: 10px;
+		}
+
+		.field label {
+			display: block;
+			font-size: 12px;
+			color: var(--muted);
+			margin-bottom: 4px;
+		}
+
+		.field input {
+			width: 100%;
+			padding: 9px 10px;
+			border: 1px solid var(--line);
+			border-radius: 8px;
+			outline: none;
+			font-size: 14px;
+		}
+
+		.field input:focus {
+			border-color: var(--accent);
+			box-shadow: 0 0 0 2px rgba(31, 111, 235, 0.15);
+		}
+
+		.row {
+			display: grid;
+			grid-template-columns: 1fr 1fr;
+			gap: 8px;
+		}
+
+		button {
+			border: 0;
+			border-radius: 8px;
+			padding: 10px 12px;
+			font-size: 14px;
+			cursor: pointer;
+		}
+
+		.primary {
+			background: var(--accent);
+			color: #fff;
+		}
+
+		.ghost {
+			background: #e9eef5;
+			color: #263445;
+		}
+
+		.main {
+			padding: 20px;
+		}
+
+		.panel {
+			background: var(--card);
+			border: 1px solid var(--line);
+			border-radius: 12px;
+			padding: 16px;
+			margin-bottom: 14px;
+		}
+
+		.title {
+			margin: 0 0 8px;
+			font-size: 22px;
+		}
+
+		.status {
+			display: flex;
+			align-items: center;
+			gap: 8px;
+			color: var(--muted);
+			margin-bottom: 10px;
+		}
+
+		.dot {
+			width: 10px;
+			height: 10px;
+			border-radius: 999px;
+			background: var(--bad);
+		}
+
+		.dot.ok {
+			background: var(--ok);
+		}
+
+		.led {
+			font-size: 28px;
+			font-weight: 700;
+			margin: 8px 0 14px;
+		}
+
+		.led.on {
+			color: var(--ok);
+		}
+
+		.led.off {
+			color: var(--bad);
+		}
+
+		.log {
+			width: 100%;
+			min-height: 220px;
+			resize: vertical;
+			border: 1px solid var(--line);
+			border-radius: 10px;
+			padding: 10px;
+			font-family: Consolas, "Courier New", monospace;
+			font-size: 12px;
+			background: #fbfdff;
+			color: #233141;
+		}
+
+		@media (max-width: 900px) {
+			.layout {
+				grid-template-columns: 1fr;
+			}
+
+			.sidebar {
+				border-right: 0;
+				border-bottom: 1px solid var(--line);
+			}
+		}
+	</style>
+</head>
+<body>
+	<div class="layout">
+		<aside class="sidebar">
+			<h2>MQTT Config</h2>
+			<p>
+				Fill these values (used to be from ENV). Password is your secret key.
+			</p>
+
+			<div class="field">
+				<label for="server">MQTT Server</label>
+				<input id="server" type="text" placeholder="example.s1.eu.hivemq.cloud" />
+			</div>
+
+			<div class="row">
+				<div class="field">
+					<label for="port">Port</label>
+					<input id="port" type="number" value="8884" />
+				</div>
+				<div class="field">
+					<label for="clientId">Client ID</label>
+					<input id="clientId" type="text" placeholder="web_xxxxxx" />
+				</div>
+			</div>
+
+			<div class="field">
+				<label for="username">Username</label>
+				<input id="username" type="text" placeholder="your_username" />
+			</div>
+
+			<div class="field">
+				<label for="password">Password (Secret Key)</label>
+				<input id="password" type="password" placeholder="your_secret_key" />
+			</div>
+
+			<div class="row">
+				<div class="field">
+					<label for="topicState">State Topic</label>
+					<input id="topicState" type="text" value="esp32/led/state" />
+				</div>
+				<div class="field">
+					<label for="topicSet">Set Topic</label>
+					<input id="topicSet" type="text" value="esp32/led/set" />
+				</div>
+			</div>
+
+			<div class="row">
+				<button class="primary" id="connectBtn" type="button">Connect</button>
+				<button class="ghost" id="disconnectBtn" type="button">Disconnect</button>
+			</div>
+		</aside>
+
+		<main class="main">
+			<section class="panel">
+				<h1 class="title">ESP32 MQTT Demo (Plain HTML)</h1>
+				<div class="status">
+					<span id="connDot" class="dot"></span>
+					<span id="connText">Disconnected</span>
+				</div>
+
+				<div id="ledState" class="led">LED: Unknown</div>
+
+				<div class="row" style="max-width: 340px;">
+					<button id="toggleBtn" class="primary" type="button">Toggle LED</button>
+				</div>
+			</section>
+
+			<section class="panel">
+				<h2 style="margin-top: 0;">Logs</h2>
+				<textarea id="log" class="log" readonly></textarea>
+			</section>
+		</main>
+	</div>
+
+	<script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+	<script>
+		(function () {
+			var client = null;
+			var ledState = "Unknown";
+
+			var els = {
+				server: document.getElementById("server"),
+				port: document.getElementById("port"),
+				clientId: document.getElementById("clientId"),
+				username: document.getElementById("username"),
+				password: document.getElementById("password"),
+				topicState: document.getElementById("topicState"),
+				topicSet: document.getElementById("topicSet"),
+				connectBtn: document.getElementById("connectBtn"),
+				disconnectBtn: document.getElementById("disconnectBtn"),
+				toggleBtn: document.getElementById("toggleBtn"),
+        
+				connDot: document.getElementById("connDot"),
+				connText: document.getElementById("connText"),
+				ledState: document.getElementById("ledState"),
+				log: document.getElementById("log")
+			};
+
+			function log(msg) {
+				var line = "[" + new Date().toLocaleTimeString() + "] " + msg;
+				els.log.value = line + "\n" + els.log.value;
+			}
+
+			function setConnection(connected) {
+				els.connText.textContent = connected ? "Connected" : "Disconnected";
+				els.connDot.classList.toggle("ok", connected);
+			}
+
+			function setLedState(state) {
+				ledState = state;
+				els.ledState.textContent = "LED: " + state;
+				els.ledState.classList.remove("on", "off");
+				if (state === "ON") els.ledState.classList.add("on");
+				if (state === "OFF") els.ledState.classList.add("off");
+			}
+
+			function saveConfig() {
+				var config = {
+					server: els.server.value.trim(),
+					port: els.port.value.trim(),
+					clientId: els.clientId.value.trim(),
+					username: els.username.value.trim(),
+					password: els.password.value,
+					topicState: els.topicState.value.trim(),
+					topicSet: els.topicSet.value.trim()
+				};
+				localStorage.setItem("mqtt_plainjs_config", JSON.stringify(config));
+			}
+
+			function loadConfig() {
+				var raw = localStorage.getItem("mqtt_plainjs_config");
+				if (!raw) return;
+				try {
+					var cfg = JSON.parse(raw);
+					els.server.value = cfg.server || "";
+					els.port.value = cfg.port || "8884";
+					els.clientId.value = cfg.clientId || "";
+					els.username.value = cfg.username || "";
+					els.password.value = cfg.password || "";
+					els.topicState.value = cfg.topicState || "esp32/led/state";
+					els.topicSet.value = cfg.topicSet || "esp32/led/set";
+				} catch (err) {
+					log("Failed to parse saved config.");
+				}
+			}
+
+			function connect() {
+				saveConfig();
+
+				var server = els.server.value.trim();
+				var port = els.port.value.trim() || "8884";
+				var username = els.username.value.trim();
+				var password = els.password.value;
+				var topicState = els.topicState.value.trim();
+
+				if (!server) {
+					alert("Please enter MQTT Server.");
+					return;
+				}
+
+				if (!topicState) {
+					alert("Please enter State Topic.");
+					return;
+				}
+
+				if (!els.clientId.value.trim()) {
+					els.clientId.value = "web_" + Math.random().toString(16).slice(2, 10);
+				}
+
+				var brokerUrl = "wss://" + server + ":" + port + "/mqtt";
+				log("Connecting to " + brokerUrl + "...");
+
+				if (client) {
+					client.end(true);
+				}
+
+				client = mqtt.connect(brokerUrl, {
+					username: username || undefined,
+					password: password || undefined,
+					clientId: els.clientId.value.trim(),
+					reconnectPeriod: 2000,
+					connectTimeout: 10000,
+					clean: true
+				});
+
+				client.on("connect", function () {
+					setConnection(true);
+					log("MQTT connected");
+
+					client.subscribe(topicState, function (err) {
+						if (err) {
+							log("Subscribe failed: " + err.message);
+						} else {
+							log("Subscribed: " + topicState);
+						}
+					});
+				});
+
+				client.on("message", function (topic, payload) {
+					var msg = payload.toString();
+					log("Message [" + topic + "] " + msg);
+
+					if (topic === els.topicState.value.trim()) {
+						setLedState(msg);
+					}
+				});
+
+				client.on("close", function () {
+					setConnection(false);
+					log("MQTT disconnected");
+				});
+
+				client.on("error", function (err) {
+					log("MQTT error: " + err.message);
+				});
+			}
+
+			function disconnect() {
+				if (!client) return;
+				client.end();
+			}
+
+			function publish(message) {
+				var topicSet = els.topicSet.value.trim();
+				if (!client || !client.connected) {
+					log("Cannot publish: not connected.");
+					return;
+				}
+				if (!topicSet) {
+					alert("Please enter Set Topic.");
+					return;
+				}
+
+				client.publish(topicSet, message, function (err) {
+					if (err) {
+						log("Publish failed: " + err.message);
+					} else {
+						log("Published [" + topicSet + "] " + message);
+					}
+				});
+			}
+
+			function toggleLed() {
+				publish(ledState === "ON" ? "OFF" : "ON");
+			}
+
+			els.connectBtn.addEventListener("click", connect);
+			els.disconnectBtn.addEventListener("click", disconnect);
+			els.toggleBtn.addEventListener("click", toggleLed);
+
+			[
+				els.server,
+				els.port,
+				els.clientId,
+				els.username,
+				els.password,
+				els.topicState,
+				els.topicSet
+			].forEach(function (el) {
+				el.addEventListener("change", saveConfig);
+			});
+
+			setConnection(false);
+			loadConfig();
+			if (!els.clientId.value.trim()) {
+				els.clientId.value = "web_" + Math.random().toString(16).slice(2, 10);
+			}
+			setLedState("Unknown");
+			log("Ready. Fill sidebar config and click Connect.");
+		})();
+	</script>
+</body>
+</html>
